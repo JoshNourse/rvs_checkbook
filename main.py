@@ -1,16 +1,60 @@
-# This is a sample Python script.
+import argparse
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from scripts import _config
+from scripts import fx_checkbook as cbio
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+logger = _config.logger_configure("main")
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+def main():
+    parser = argparse.ArgumentParser(description="Run Checkbook API data pull")
+    parser.add_argument(
+        "--use-cache",
+        action="store_true",
+        help="Load checks from the pickle cache if available",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Ignore cache and fetch fresh data from API",
+    )
+    parser.add_argument(
+        "--export-csv",
+        action="store_true",
+        help="Write the final dataframe to a CSV file",
+    )
+    parser.add_argument(
+        "--start-days-back",
+        type=int,
+        default=None,
+        help="Limit API fetch to the last N days (for example, 120). Leave blank for full load.",
+    )
+
+    args = parser.parse_args()
+
+    use_cache = True
+    if args.refresh_cache:
+        use_cache = False
+    elif args.use_cache:
+        use_cache = True
+
+    _config.report(
+        f"Starting Checkbook pull: use_cache={use_cache}, export_csv={args.export_csv}, start_days_back={args.start_days_back}",
+        logger=logger,
+    )
+
+    df = cbio.cbio_build_checks_dataframe(
+        use_cache=use_cache,
+        export_csv=args.export_csv,
+        start_days_back=args.start_days_back,
+    )
+
+    _config.report(
+        f"Finished. Rows: {len(df)}, Columns: {len(df.columns)}",
+        logger=logger,
+    )
+
+
+if __name__ == "__main__":
+    main()

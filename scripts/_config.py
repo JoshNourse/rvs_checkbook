@@ -1,23 +1,26 @@
-import json
-import pathlib
-from pathlib import Path
-import logging
 import csv
+import json
+import logging
+from pathlib import Path
 
 
 """ ****************************************
             CONFIGURE Paths
 ******************************************** """
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOGS_FOLDER = PROJECT_ROOT / "logs"
+# logs_folder = Path(r"C:\.logs")
+
 # Keys:  Note Personal vault requires 2FA and autolocks after 20 minutes.
-key_vault = pathlib.Path(r'C:\Users\Joshu\OneDrive\Personal Vault\my_keys.json')
-logs_folder = Path(r"C:\.logs")
+key_vault = Path(r'C:\Users\Joshu\OneDrive\Personal Vault\my_keys.json')
+
 
 #  Deprecated - Doing fix in BigQuery now
-checkbook_fix_csv = pathlib.Path(r'/data_exports/checkbook_fix.csv')
-def get_checkbook_fix():  # Does not work for UTF8
-    with open(checkbook_fix_csv, 'r') as data:
-        return list(csv.DictReader(data))
+# checkbook_fix_csv = pathlib.Path(r'/data_exports/checkbook_fix.csv')
+# def get_checkbook_fix():  # Does not work for UTF8
+#     with open(checkbook_fix_csv, 'r') as data:
+#         return list(csv.DictReader(data))
 
 
 
@@ -45,22 +48,35 @@ def get_bigquery_keys(keys_dict=get_keys()):
             CONFIGURE LOGGER
 ******************************************** """
 def logger_configure(logger_name):
+    LOGS_FOLDER.mkdir(parents=True, exist_ok=True)
+    log_file = LOGS_FOLDER / f'{logger_name}.log'
 
-    # logs_folder = Path("/home/joshua/PyProjects/zoom/logs")
-    logger_folder = logs_folder
-    log = Path.joinpath(logger_folder, Path(f'{logger_name}.log'))
-
-    # Gets or creates a logger
     logger = logging.getLogger(logger_name)
-    # set log level
     logger.setLevel(logging.DEBUG)
-    # define file handler and set formatter
-    file_handler = logging.FileHandler(log)
-    formatter    = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(funcName)s : %(message)s')
-    file_handler.setFormatter(formatter)
-    # add file handler to logger
-    logger.addHandler(file_handler)
+
+    if not logger.handlers:
+        file_handler = logging.FileHandler(log_file)
+        formatter = logging.Formatter(
+            '%(asctime)s : %(levelname)s : %(name)s : %(funcName)s : %(message)s'
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
     return logger
+
+
+def report(message, logger=None, level="info"):
+    print(message, flush=True)
+
+    if logger is None:
+        return
+
+    if level == "warning":
+        logger.warning(message)
+    elif level == "error":
+        logger.error(message)
+    else:
+        logger.info(message)
 
 
 """ ****************************************

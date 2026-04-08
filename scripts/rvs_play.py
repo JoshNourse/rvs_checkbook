@@ -2,9 +2,9 @@
 # from pandas.io.json import json_normalize
 import requests
 import pandas as pd
-import fx_checkbook as cbio
+from scripts import fx_checkbook as cbio
 import re
-import _config
+from scripts import _config
 import pickle
 from datetime import datetime
 from pathlib import Path

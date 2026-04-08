@@ -1,7 +1,7 @@
 from google.oauth2 import service_account
 from google.cloud import bigquery
 import pandas as pd
-import _config
+from scripts import _config
 
 
 bq_keys = _config.get_bigquery_keys()
