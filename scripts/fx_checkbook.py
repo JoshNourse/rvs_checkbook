@@ -164,6 +164,101 @@ def cbio_build_checks_dataframe(
     return df_checks
 
 
+def cbio_build_checks_json(
+    use_cache=True,
+    export_csv=False,
+    output_path=None,
+    start_days_back=None,
+):
+    cache_name = _cache_name_for_days_back(start_days_back)
+    cache_path = DATA_EXPORTS / cache_name
+    DATA_EXPORTS.mkdir(parents=True, exist_ok=True)
+
+    _config.report(
+        f"Build JSON started. use_cache={use_cache}, start_days_back={start_days_back}",
+        logger=logger,
+    )
+    _config.report(f"Using cache file: {cache_path}", logger=logger)
+
+    if use_cache and cache_path.exists():
+        _config.report(f"Loading checks from cache: {cache_path}", logger=logger)
+        with open(cache_path, "rb") as f:
+            checks_all = pickle.load(f)
+        _config.report(f"Loaded {len(checks_all)} checks from cache", logger=logger)
+    else:
+        _config.report("Fetching checks from API", logger=logger)
+        checks_all = cbio_get_sent_received_list_all_partners(start_days_back=start_days_back)
+        with open(cache_path, "wb") as f:
+            pickle.dump(checks_all, f)
+        _config.report(f"Saved cache to: {cache_path}", logger=logger)
+
+    checks_col_order = [
+        "id",
+        "date",
+        "number",
+        "direction",
+        "status",
+        "amount",
+        "name",
+        "description",
+        "sender",
+        "recipient",
+        "recipient_line_1",
+        "recipient_line_2",
+        "recipient_city",
+        "recipient_state",
+        "recipient_zip",
+        "image_uri",
+    ]
+
+    renamed_checks = []
+    api_only_keys = set()
+
+    for check in checks_all:
+        row = dict(check)
+
+        recipient_value = row.pop("recipient", None)
+        if isinstance(recipient_value, dict):
+            row["recipient"] = None
+            row["recipient_line_1"] = recipient_value.get("line_1")
+            row["recipient_line_2"] = recipient_value.get("line_2")
+            row["recipient_city"] = recipient_value.get("city")
+            row["recipient_state"] = recipient_value.get("state")
+            row["recipient_zip"] = recipient_value.get("zip")
+        else:
+            row["recipient"] = recipient_value
+            row["recipient_line_1"] = None
+            row["recipient_line_2"] = None
+            row["recipient_city"] = None
+            row["recipient_state"] = None
+            row["recipient_zip"] = None
+
+        filtered_row = {col: row.get(col) for col in checks_col_order}
+        renamed_checks.append(filtered_row)
+
+        api_only_keys.update(set(row.keys()) - set(checks_col_order))
+
+    api_only_keys = sorted(api_only_keys)
+    if api_only_keys:
+        _config.report(
+            f"New API columns detected that are not in checks_col_order: {api_only_keys}",
+            logger=logger,
+            level="warning",
+        )
+
+    if export_csv:
+        if output_path is None:
+            output_path = DATA_EXPORTS / f"checks_download_all_{pd.Timestamp.today().strftime('%Y-%m-%d')}.csv"
+        else:
+            output_path = Path(output_path)
+
+        pd.DataFrame(renamed_checks).to_csv(output_path, index=True)
+        _config.report(f"Exported CSV to: {output_path}", logger=logger)
+
+    _config.report(f"Built JSON payload count: {len(renamed_checks)}", logger=logger)
+    return renamed_checks
+
+
 
 
 

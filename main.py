@@ -2,6 +2,18 @@ import argparse
 
 from scripts import _config
 from scripts import fx_checkbook as cbio
+from scripts import play_bigquery_json as bqj
+
+
+
+'''
+In Terminal (alt+F12)
+📌 Unlock Vault (until .env refactor)
+Daily Use: python main.py --refresh-cache --export-csv --start-days-back 120
+Full Refresh: python main.py --refresh-cache --export-csv
+
+
+'''
 
 
 logger = _config.logger_configure("main")
@@ -22,7 +34,7 @@ def main():
     parser.add_argument(
         "--export-csv",
         action="store_true",
-        help="Write the final dataframe to a CSV file",
+        help="Write the final results to a CSV file",
     )
     parser.add_argument(
         "--start-days-back",
@@ -44,16 +56,21 @@ def main():
         logger=logger,
     )
 
-    df = cbio.cbio_build_checks_dataframe(
+    checks = cbio.cbio_build_checks_json(
         use_cache=use_cache,
         export_csv=args.export_csv,
         start_days_back=args.start_days_back,
     )
 
     _config.report(
-        f"Finished. Rows: {len(df)}, Columns: {len(df.columns)}",
+        f"Loaded JSON ready for BigQuery. rows={len(checks)}",
         logger=logger,
     )
+
+    loaded = bqj.load_checkbook_records_to_bigquery(checks)
+    _config.report(f"Loaded {loaded} rows to BigQuery", logger=logger)
+
+    _config.report(f"Finished. rows={len(checks)}", logger=logger)
 
 
 if __name__ == "__main__":

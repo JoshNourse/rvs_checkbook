@@ -1,0 +1,7 @@
+/checks_all.pkl
+/.venv/
+/scripts/checks_all.pkl
+/data_exports/
+/.idea/.gitignore
+/.idea
+/logs/
